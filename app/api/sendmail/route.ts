@@ -4,6 +4,7 @@ import { withCors } from '@/src/lib/cors';
 import { parseEmailContent } from '@/src/lib/email-parser';
 import { requireApiKey } from '@/src/lib/auth';
 import { checkRateLimit, getRateLimitHeaders } from '@/src/lib/rate-limit';
+import { validateEmailAddresses } from '@/src/lib/email-validator';
 
 /**
  * POST /api/sendmail
@@ -41,6 +42,53 @@ export async function POST(req: NextRequest) {
 
     if (!body.subject) {
       return withCors(NextResponse.json({ error: 'Field "subject" is required' }, { status: 400 }));
+    }
+
+    // Validate email addresses
+    const toValidation = validateEmailAddresses(body.to);
+    if (!toValidation.valid) {
+      return withCors(
+        NextResponse.json(
+          { error: 'Invalid email addresses in "to" field', invalid: toValidation.invalid },
+          { status: 400 },
+        ),
+      );
+    }
+
+    if (body.cc) {
+      const ccValidation = validateEmailAddresses(body.cc);
+      if (!ccValidation.valid) {
+        return withCors(
+          NextResponse.json(
+            { error: 'Invalid email addresses in "cc" field', invalid: ccValidation.invalid },
+            { status: 400 },
+          ),
+        );
+      }
+    }
+
+    if (body.bcc) {
+      const bccValidation = validateEmailAddresses(body.bcc);
+      if (!bccValidation.valid) {
+        return withCors(
+          NextResponse.json(
+            { error: 'Invalid email addresses in "bcc" field', invalid: bccValidation.invalid },
+            { status: 400 },
+          ),
+        );
+      }
+    }
+
+    if (body.replyTo) {
+      const replyToValidation = validateEmailAddresses(body.replyTo);
+      if (!replyToValidation.valid) {
+        return withCors(
+          NextResponse.json(
+            { error: 'Invalid email addresses in "replyTo" field', invalid: replyToValidation.invalid },
+            { status: 400 },
+          ),
+        );
+      }
     }
 
     // Get configuration from body or env
@@ -124,6 +172,7 @@ export async function POST(req: NextRequest) {
       text: text,
       cc: body.cc,
       bcc: body.bcc,
+      replyTo: body.replyTo,
     };
 
     const config: GmailConfig = {

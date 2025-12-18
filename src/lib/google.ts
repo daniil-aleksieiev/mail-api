@@ -11,6 +11,7 @@ export type SendEmailParams = {
   text?: string;
   cc?: string | string[];
   bcc?: string | string[];
+  replyTo?: string | string[];
 };
 
 const GMAIL_API_KEY = process.env.GMAIL_API_KEY;
@@ -75,10 +76,17 @@ export const getAccessToken = async (refreshToken: string): Promise<string> => {
 /**
  * Creates MIME message for sending via Gmail API
  */
+/**
+ * Gmail API has a limit of 25MB per message (including attachments)
+ * We'll validate the message size before encoding
+ */
+const MAX_MESSAGE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
+
 function createMimeMessage(params: SendEmailParams, fromEmail: string, fromName: string): string {
   const to = Array.isArray(params.to) ? params.to.join(', ') : params.to;
   const cc = params.cc ? (Array.isArray(params.cc) ? params.cc.join(', ') : params.cc) : '';
   const bcc = params.bcc ? (Array.isArray(params.bcc) ? params.bcc.join(', ') : params.bcc) : '';
+  const replyTo = params.replyTo ? (Array.isArray(params.replyTo) ? params.replyTo.join(', ') : params.replyTo) : '';
 
   const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
@@ -87,6 +95,7 @@ function createMimeMessage(params: SendEmailParams, fromEmail: string, fromName:
   message += `To: ${to}\r\n`;
   if (cc) message += `Cc: ${cc}\r\n`;
   if (bcc) message += `Bcc: ${bcc}\r\n`;
+  if (replyTo) message += `Reply-To: ${replyTo}\r\n`;
   message += `Subject: ${params.subject}\r\n`;
   message += `MIME-Version: 1.0\r\n`;
   message += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n\r\n`;
@@ -120,6 +129,70 @@ function encodeMessage(message: string): string {
 }
 
 /**
+ * Validates message size before sending
+ */
+function validateMessageSize(message: string): { valid: boolean; error?: string } {
+  // Base64 encoding increases size by ~33%, so we check the raw message
+  const messageSize = Buffer.byteLength(message, 'utf8');
+
+  if (messageSize > MAX_MESSAGE_SIZE) {
+    return {
+      valid: false,
+      error: `Message size (${(messageSize / 1024 / 1024).toFixed(2)}MB) exceeds Gmail API limit of 25MB`,
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Parses Gmail API error response for better error messages
+ */
+function parseGmailError(status: number, errorText: string): string {
+  try {
+    const errorData = JSON.parse(errorText);
+    const error = errorData.error || {};
+
+    // Common Gmail API errors
+    switch (status) {
+      case 400:
+        if (error.message?.includes('Invalid')) {
+          return `Invalid request: ${error.message}`;
+        }
+        if (error.message?.includes('size')) {
+          return `Message too large: ${error.message}`;
+        }
+        return `Bad request: ${error.message || errorText}`;
+
+      case 401:
+        return 'Authentication failed. Check your refresh token.';
+
+      case 403:
+        if (error.message?.includes('quota')) {
+          return 'Gmail API quota exceeded. Daily limit reached.';
+        }
+        if (error.message?.includes('permission')) {
+          return 'Permission denied. Check OAuth scopes.';
+        }
+        return `Access forbidden: ${error.message || errorText}`;
+
+      case 429:
+        return 'Rate limit exceeded. Too many requests to Gmail API.';
+
+      case 500:
+      case 503:
+        return 'Gmail API service temporarily unavailable. Please try again later.';
+
+      default:
+        return `Gmail API error (${status}): ${error.message || errorText}`;
+    }
+  } catch {
+    // If error is not JSON, return as is
+    return `Gmail API error (${status}): ${errorText}`;
+  }
+}
+
+/**
  * Sends email via Gmail API
  */
 export async function sendEmail(
@@ -132,6 +205,16 @@ export async function sendEmail(
 
     // Create MIME message
     const mimeMessage = createMimeMessage(params, config.gmail_api_sender_email, config.gmail_api_sender_name);
+
+    // Validate message size
+    const sizeValidation = validateMessageSize(mimeMessage);
+    if (!sizeValidation.valid) {
+      return {
+        success: false,
+        error: sizeValidation.error,
+      };
+    }
+
     const encodedMessage = encodeMessage(mimeMessage);
 
     // Send via Gmail API
@@ -147,8 +230,9 @@ export async function sendEmail(
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      throw new Error(`Gmail API error: ${response.status} ${errorData}`);
+      const errorText = await response.text();
+      const errorMessage = parseGmailError(response.status, errorText);
+      throw new Error(errorMessage);
     }
 
     const result = await response.json();
