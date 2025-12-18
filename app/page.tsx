@@ -11,7 +11,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-6">
               <a
-                href="https://github.com/daniil-aleksieiev"
+                href="https://github.com/daniil-aleksieiev/mail-api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#888] hover:text-[#00ff88] transition-colors duration-200"
@@ -48,7 +48,7 @@ export default function Home() {
               HTML templates, and automatic object formatting.
             </p>
             <a
-              href="https://github.com/daniil-aleksieiev/mail-service/blob/main/README.md"
+              href="https://github.com/daniil-aleksieiev/mail-api"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-lg text-[#00ff88] hover:bg-[#00ff88]/20 hover:border-[#00ff88]/50 transition-all duration-200 font-semibold"
@@ -143,7 +143,38 @@ export default function Home() {
                   </div>
                 </div>
                 <div>
-                  <p className="text-xs text-[#666] mb-2">Request Body:</p>
+                  <p className="text-xs text-[#666] mb-2">Content Types:</p>
+                  <div className="grid md:grid-cols-3 gap-3 mb-3">
+                    <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a]">
+                      <p className="text-xs text-[#00ff88] mb-1 font-semibold">Plain Text</p>
+                      <pre className="text-xs text-[#888] overflow-x-auto">
+                        {`{
+  "text": "Hello"
+}`}
+                      </pre>
+                    </div>
+                    <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a]">
+                      <p className="text-xs text-[#00ff88] mb-1 font-semibold">HTML</p>
+                      <pre className="text-xs text-[#888] overflow-x-auto">
+                        {`{
+  "html": "<h1>Hello</h1>"
+}`}
+                      </pre>
+                    </div>
+                    <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a]">
+                      <p className="text-xs text-[#00ff88] mb-1 font-semibold">Fields Object</p>
+                      <pre className="text-xs text-[#888] overflow-x-auto">
+                        {`{
+  "fields": {
+    "name": "John"
+  }
+}`}
+                      </pre>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-[#666] mb-2">Example Request Body:</p>
                   <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a]">
                     <pre className="text-sm text-[#888] overflow-x-auto">
                       {`{
@@ -188,7 +219,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-[#00ff88]">Quick Start</h3>
               <a
-                href="https://github.com/daniil-aleksieiev/mail-service/blob/main/README.md#getting-started"
+                href="https://github.com/daniil-aleksieiev/mail-api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-[#888] hover:text-[#00ff88] transition-colors duration-200 flex items-center gap-1"
@@ -226,8 +257,10 @@ API_KEY=your-api-key`}
                 </div>
                 <div>
                   <p className="text-xs text-[#666] mb-2">3. Get refresh token</p>
-                  <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a]">
-                    <code className="text-sm text-[#00ff88]">GET http://localhost:3000/api/auth/google</code>
+                  <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a] overflow-x-auto">
+                    <code className="text-sm text-[#00ff88] whitespace-nowrap">
+                      GET http://localhost:3000/api/auth/google
+                    </code>
                   </div>
                 </div>
               </div>
@@ -235,7 +268,7 @@ API_KEY=your-api-key`}
                 <p className="text-xs text-[#666]">
                   For detailed setup instructions, examples, and troubleshooting, see the{' '}
                   <a
-                    href="https://github.com/daniil-aleksieiev/mail-service/blob/main/README.md"
+                    href="https://github.com/daniil-aleksieiev/mail-api"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#00ff88] hover:underline"
@@ -261,7 +294,7 @@ API_KEY=your-api-key`}
               </div>
               <div className="flex items-center gap-6">
                 <a
-                  href="https://github.com/daniil-aleksieiev"
+                  href="https://github.com/daniil-aleksieiev/mail-api"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#888] hover:text-[#00ff88] transition-colors duration-200 flex items-center gap-2"
