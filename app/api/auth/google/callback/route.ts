@@ -27,8 +27,24 @@ export async function GET(req: NextRequest) {
   }
 
   if (!code) {
+    return withCors(NextResponse.json({ error: 'Authorization code not provided' }, { status: 400 }));
+  }
+
+  // Security: Only allow callback from localhost in development
+  // In production, Google OAuth will validate redirect_uri, but this adds extra protection
+  const hostname = req.nextUrl.hostname;
+  const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  const allowProduction = process.env.ALLOW_PRODUCTION_OAUTH === 'true';
+
+  if (!isLocalhost && !allowProduction) {
     return withCors(
-      NextResponse.json({ error: 'Authorization code not provided' }, { status: 400 }),
+      NextResponse.json(
+        {
+          error: 'OAuth callback is only allowed from localhost for security reasons',
+          hint: 'If you need to use this in production, set ALLOW_PRODUCTION_OAUTH=true in environment variables',
+        },
+        { status: 403 },
+      ),
     );
   }
 
@@ -75,8 +91,7 @@ export async function GET(req: NextRequest) {
         NextResponse.json(
           {
             error: errorMessage,
-            redirect_uri_used: redirectUri,
-            hint: 'Make sure the redirect URI in Google Cloud Console matches exactly: ' + redirectUri,
+            hint: 'Make sure the redirect URI in Google Cloud Console matches the one configured in your environment',
           },
           { status: 400 },
         ),
@@ -89,8 +104,8 @@ export async function GET(req: NextRequest) {
       return withCors(
         NextResponse.json(
           {
-            error: 'Refresh token not received. This may happen if you already authorized the app. Try revoking access and authorizing again.',
-            access_token: tokens.access_token,
+            error:
+              'Refresh token not received. This may happen if you already authorized the app. Try revoking access and authorizing again.',
             hint: 'Make sure to include "prompt=consent" in the authorization URL to force refresh token generation',
           },
           { status: 400 },
@@ -99,14 +114,13 @@ export async function GET(req: NextRequest) {
     }
 
     // Return refresh token (save it to .env as GMAIL_REFRESH_TOKEN)
+    // Note: We don't return access_token for security reasons - it's temporary and not needed
     return withCors(
       NextResponse.json({
         success: true,
         refresh_token: tokens.refresh_token,
-        access_token: tokens.access_token, // Temporary, usually lives for 1 hour
         expires_in: tokens.expires_in,
         message: 'Save the refresh_token to your .env file as GMAIL_REFRESH_TOKEN',
-        redirect_uri_used: redirectUri,
       }),
     );
   } catch (error) {

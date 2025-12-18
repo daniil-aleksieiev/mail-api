@@ -57,8 +57,8 @@ export const getAccessToken = async (refreshToken: string): Promise<string> => {
         errorMessage += ` (${errorData.error_description})`;
       }
     } catch {
-      const errorText = await r.text();
-      errorMessage = `Token exchange failed: ${errorText}`;
+      // Don't expose raw error text to prevent information leakage
+      errorMessage = 'Token exchange failed: Unable to parse error response';
     }
 
     throw new Error(errorMessage);
@@ -157,12 +157,12 @@ function parseGmailError(status: number, errorText: string): string {
     switch (status) {
       case 400:
         if (error.message?.includes('Invalid')) {
-          return `Invalid request: ${error.message}`;
+          return 'Invalid request: Please check your email parameters';
         }
         if (error.message?.includes('size')) {
-          return `Message too large: ${error.message}`;
+          return 'Message too large: Email exceeds Gmail API size limit';
         }
-        return `Bad request: ${error.message || errorText}`;
+        return 'Bad request: Invalid email parameters';
 
       case 401:
         return 'Authentication failed. Check your refresh token.';
@@ -174,7 +174,7 @@ function parseGmailError(status: number, errorText: string): string {
         if (error.message?.includes('permission')) {
           return 'Permission denied. Check OAuth scopes.';
         }
-        return `Access forbidden: ${error.message || errorText}`;
+        return 'Access forbidden: Check OAuth permissions and API quotas';
 
       case 429:
         return 'Rate limit exceeded. Too many requests to Gmail API.';
@@ -184,11 +184,11 @@ function parseGmailError(status: number, errorText: string): string {
         return 'Gmail API service temporarily unavailable. Please try again later.';
 
       default:
-        return `Gmail API error (${status}): ${error.message || errorText}`;
+        return `Gmail API error (${status}): Please try again later`;
     }
   } catch {
-    // If error is not JSON, return as is
-    return `Gmail API error (${status}): ${errorText}`;
+    // Don't expose raw error text to prevent information leakage
+    return `Gmail API error (${status}): Unable to parse error response`;
   }
 }
 
