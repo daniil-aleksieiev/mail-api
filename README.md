@@ -6,6 +6,7 @@ A simple email forwarding service built with Next.js that sends emails via Gmail
 
 - 📧 Send emails via Gmail API
 - 🎨 Support for plain text, HTML, and object-based emails
+- 📎 Email attachments support (base64 or URL-based)
 - 🔄 Automatic field name formatting (e.g., `full_name` → "Full Name")
 - 📝 Template support with data substitution
 - 🔐 OAuth 2.0 authentication with refresh tokens
@@ -91,6 +92,8 @@ Sends an email via Gmail API.
 - `fields` (optional): Object with key-value pairs (auto-formatted)
 - `cc` (optional): CC recipients
 - `bcc` (optional): BCC recipients
+- `replyTo` (optional): Reply-To address
+- `attachments` (optional): Array of attachments (see [Attachments](#attachments) section)
 - `senderEmail` (optional): Override sender email from env
 - `senderName` (optional): Override sender name from env
 - `refreshToken` (optional): Override refresh token from env
@@ -184,6 +187,116 @@ You can also pass objects directly to `text` or `html` fields:
   "html": "<h1>Team Update</h1><p>This is an update for the team.</p>"
 }
 ```
+
+### 7. Email with Attachments
+
+#### Base64 Attachment
+
+```json
+{
+  "to": "recipient@example.com",
+  "subject": "Document",
+  "text": "Please find attached document",
+  "attachments": [
+    {
+      "filename": "document.pdf",
+      "content": "JVBERi0xLjQKJeLjz9MKMy...",
+      "contentType": "application/pdf"
+    }
+  ]
+}
+```
+
+#### URL-based Attachment
+
+```json
+{
+  "to": "recipient@example.com",
+  "subject": "Report",
+  "html": "<h1>Monthly Report</h1>",
+  "attachments": [
+    {
+      "filename": "report.pdf",
+      "url": "https://example.com/files/report.pdf",
+      "contentType": "application/pdf"
+    }
+  ]
+}
+```
+
+#### Multiple Attachments
+
+```json
+{
+  "to": "recipient@example.com",
+  "subject": "Photos",
+  "text": "Here are your photos",
+  "attachments": [
+    {
+      "filename": "photo1.jpg",
+      "content": "base64...",
+      "contentType": "image/jpeg"
+    },
+    {
+      "filename": "photo2.jpg",
+      "url": "https://example.com/photos/photo2.jpg",
+      "contentType": "image/jpeg"
+    }
+  ]
+}
+```
+
+## Attachments
+
+The service supports email attachments in two formats:
+
+### Base64 Encoded
+
+For small files (< 5MB), you can send the file content as a base64-encoded string:
+
+```json
+{
+  "attachments": [
+    {
+      "filename": "document.pdf",
+      "content": "base64-encoded-content",
+      "contentType": "application/pdf"
+    }
+  ]
+}
+```
+
+### URL-based
+
+For larger files, provide a URL and the service will download the file automatically:
+
+```json
+{
+  "attachments": [
+    {
+      "filename": "document.pdf",
+      "url": "https://example.com/files/document.pdf",
+      "contentType": "application/pdf"
+    }
+  ]
+}
+```
+
+### Attachment Limits
+
+- **Maximum file size**: 25MB per attachment
+- **Maximum total size**: 25MB for entire message (including text, HTML, and all attachments)
+- **Maximum count**: 10 attachments per email
+- **Supported protocols**: Only `http://` and `https://` for URL-based attachments
+
+### Security
+
+- Dangerous file types are blocked (`.exe`, `.bat`, etc.)
+- Filename validation prevents path traversal attacks
+- URL validation ensures only safe protocols are used
+- File size validation prevents abuse
+
+For detailed information and examples, see [`_docs/attachments.md`](_docs/attachments.md) and [`_docs/postman-attachments.md`](_docs/postman-attachments.md).
 
 ## Testing with Postman
 
@@ -293,9 +406,15 @@ X-API-Key: your-api-key-here
 {
   "success": true,
   "messageId": "18cxxxxxxxxxxxxxxxxxxxxx",
-  "message": "Email sent successfully"
+  "message": "Email sent successfully",
+  "attachments": {
+    "count": 2,
+    "totalSize": 1048576
+  }
 }
 ```
+
+The `attachments` field is only included if attachments were sent.
 
 ### Error Response
 
@@ -415,8 +534,11 @@ mail-service/
 ├── src/
 │   └── lib/
 │       ├── auth.ts                   # API key authentication
-│       ├── cors.ts                    # CORS utility
-│       ├── email-parser.ts            # Content parsing logic
+│       ├── attachment-loader.ts      # Attachment loading from URL
+│       ├── attachment-validator.ts  # Attachment validation
+│       ├── cors.ts                   # CORS utility
+│       ├── email-parser.ts           # Content parsing logic
+│       ├── email-validator.ts        # Email address validation
 │       ├── google.ts                  # Gmail API integration
 │       └── rate-limit.ts              # Rate limiting logic
 └── ...

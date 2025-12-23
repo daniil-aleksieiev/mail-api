@@ -80,6 +80,11 @@ export default function Home() {
                   desc: 'Support for plain text, HTML, and object-based emails',
                 },
                 {
+                  icon: '📎',
+                  title: 'File Attachments',
+                  desc: 'Support for email attachments (base64 or URL-based, up to 25MB)',
+                },
+                {
                   icon: '🔄',
                   title: 'Auto Formatting',
                   desc: 'Automatic field name formatting (e.g., full_name → "Full Name")',
@@ -171,6 +176,25 @@ export default function Home() {
 }`}
                       </pre>
                     </div>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-[#666] mb-2">Attachments Example:</p>
+                  <div className="bg-[#0a0a0a] p-3 rounded border border-[#1a1a1a]">
+                    <pre className="text-xs text-[#888] overflow-x-auto whitespace-pre-wrap">
+                      {`{
+  "to": "user@example.com",
+  "subject": "Document",
+  "text": "Please find attached",
+  "attachments": [
+    {
+      "filename": "doc.pdf",
+      "content": "base64...",
+      "contentType": "application/pdf"
+    }
+  ]
+}`}
+                    </pre>
                   </div>
                 </div>
                 <div>

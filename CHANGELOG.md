@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Email attachments support:
+  - Base64 encoded attachments
+  - URL-based attachments (automatic download)
+  - Multiple attachments per email (up to 10)
+  - Attachment size validation (25MB limit per file)
+  - Attachment type validation (blocks dangerous file types)
+  - Filename security validation (prevents path traversal)
+  - Automatic MIME encoding for attachments
+- Unit tests for attachment validation and loading
+- Documentation for attachments in `_docs/attachments.md`
+- Postman testing guide for attachments in `_docs/postman-attachments.md`
+
 ## [0.1.0] - 2025-12-18
 
 ### Added
@@ -67,6 +81,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced Gmail API error handling with user-friendly messages
 - Improved MIME message creation with reply-to support
 - Better error messages for debugging without exposing internals
-
-[Unreleased]: https://github.com/daniil-aleksieiev/mail-service/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/daniil-aleksieiev/mail-service/releases/tag/v0.1.0

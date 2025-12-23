@@ -4,6 +4,13 @@ export type GmailConfig = {
   gmail_api_sender_name: string;
 };
 
+export type Attachment = {
+  filename: string;
+  content?: string; // Base64 encoded
+  url?: string; // URL to load
+  contentType: string;
+};
+
 export type SendEmailParams = {
   to: string | string[];
   subject: string;
@@ -12,6 +19,7 @@ export type SendEmailParams = {
   cc?: string | string[];
   bcc?: string | string[];
   replyTo?: string | string[];
+  attachments?: Attachment[];
 };
 
 const GMAIL_API_KEY = process.env.GMAIL_API_KEY;
@@ -74,13 +82,39 @@ export const getAccessToken = async (refreshToken: string): Promise<string> => {
 };
 
 /**
- * Creates MIME message for sending via Gmail API
- */
-/**
  * Gmail API has a limit of 25MB per message (including attachments)
  * We'll validate the message size before encoding
  */
 const MAX_MESSAGE_SIZE = 25 * 1024 * 1024; // 25MB in bytes
+
+/**
+ * Creates attachment part for MIME message
+ */
+function createAttachmentPart(attachment: Attachment, content: string): string {
+  // Encode filename for MIME (RFC 2047 for non-ASCII characters)
+  // If filename contains only ASCII, use it directly, otherwise encode using base64
+  const needsEncoding = /[^\x20-\x7E]/.test(attachment.filename);
+  let filenameHeader: string;
+
+  if (needsEncoding) {
+    // Use RFC 2047 encoding for non-ASCII filenames
+    const encoded = Buffer.from(attachment.filename, 'utf8').toString('base64');
+    filenameHeader = `=?UTF-8?B?${encoded}?=`;
+  } else {
+    // Escape quotes in filename
+    filenameHeader = attachment.filename.replace(/"/g, '\\"');
+  }
+
+  let part = `Content-Type: ${attachment.contentType}\r\n`;
+  part += `Content-Disposition: attachment; filename="${filenameHeader}"\r\n`;
+  part += `Content-Transfer-Encoding: base64\r\n\r\n`;
+
+  // Split base64 content into lines of 76 characters (MIME standard)
+  const base64Content = content.replace(/(.{76})/g, '$1\r\n');
+  part += `${base64Content}\r\n`;
+
+  return part;
+}
 
 function createMimeMessage(params: SendEmailParams, fromEmail: string, fromName: string): string {
   const to = Array.isArray(params.to) ? params.to.join(', ') : params.to;
@@ -88,8 +122,15 @@ function createMimeMessage(params: SendEmailParams, fromEmail: string, fromName:
   const bcc = params.bcc ? (Array.isArray(params.bcc) ? params.bcc.join(', ') : params.bcc) : '';
   const replyTo = params.replyTo ? (Array.isArray(params.replyTo) ? params.replyTo.join(', ') : params.replyTo) : '';
 
-  const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+
+  const hasAttachments = params.attachments && params.attachments.length > 0;
+
+  // If we have attachments, use multipart/mixed, otherwise multipart/alternative
+  const outerBoundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+  const innerBoundary = hasAttachments
+    ? `----=_Part_${Date.now()}_${Math.random().toString(36).substring(7)}`
+    : outerBoundary;
 
   let message = `From: ${from}\r\n`;
   message += `To: ${to}\r\n`;
@@ -98,25 +139,68 @@ function createMimeMessage(params: SendEmailParams, fromEmail: string, fromName:
   if (replyTo) message += `Reply-To: ${replyTo}\r\n`;
   message += `Subject: ${params.subject}\r\n`;
   message += `MIME-Version: 1.0\r\n`;
-  message += `Content-Type: multipart/alternative; boundary="${boundary}"\r\n\r\n`;
 
-  // Text part
-  if (params.text) {
-    message += `--${boundary}\r\n`;
-    message += `Content-Type: text/plain; charset=UTF-8\r\n`;
-    message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
-    message += `${params.text}\r\n\r\n`;
+  if (hasAttachments) {
+    // Use multipart/mixed for messages with attachments
+    message += `Content-Type: multipart/mixed; boundary="${outerBoundary}"\r\n\r\n`;
+
+    // Add multipart/alternative part for text/html (only if we have text or html)
+    if (params.text || params.html) {
+      message += `--${outerBoundary}\r\n`;
+      message += `Content-Type: multipart/alternative; boundary="${innerBoundary}"\r\n\r\n`;
+
+      // Text part
+      if (params.text) {
+        message += `--${innerBoundary}\r\n`;
+        message += `Content-Type: text/plain; charset=UTF-8\r\n`;
+        message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
+        message += `${params.text}\r\n\r\n`;
+      }
+
+      // HTML part
+      if (params.html) {
+        message += `--${innerBoundary}\r\n`;
+        message += `Content-Type: text/html; charset=UTF-8\r\n`;
+        message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
+        message += `${params.html}\r\n\r\n`;
+      }
+
+      // Close inner boundary (multipart/alternative)
+      message += `--${innerBoundary}--\r\n\r\n`;
+    }
+  } else {
+    // Use multipart/alternative for messages without attachments
+    message += `Content-Type: multipart/alternative; boundary="${outerBoundary}"\r\n\r\n`;
+
+    // Text part
+    if (params.text) {
+      message += `--${outerBoundary}\r\n`;
+      message += `Content-Type: text/plain; charset=UTF-8\r\n`;
+      message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
+      message += `${params.text}\r\n\r\n`;
+    }
+
+    // HTML part
+    if (params.html) {
+      message += `--${outerBoundary}\r\n`;
+      message += `Content-Type: text/html; charset=UTF-8\r\n`;
+      message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
+      message += `${params.html}\r\n\r\n`;
+    }
   }
 
-  // HTML part
-  if (params.html) {
-    message += `--${boundary}\r\n`;
-    message += `Content-Type: text/html; charset=UTF-8\r\n`;
-    message += `Content-Transfer-Encoding: 7bit\r\n\r\n`;
-    message += `${params.html}\r\n\r\n`;
+  // Add attachments
+  if (hasAttachments && params.attachments) {
+    for (const attachment of params.attachments) {
+      if (attachment.content) {
+        message += `--${outerBoundary}\r\n`;
+        message += createAttachmentPart(attachment, attachment.content);
+      }
+    }
   }
 
-  message += `--${boundary}--`;
+  // Close outer boundary
+  message += `--${outerBoundary}--`;
 
   return message;
 }
