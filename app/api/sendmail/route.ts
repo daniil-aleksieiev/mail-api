@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sendEmail, type SendEmailParams, type GmailConfig } from '@/src/lib/google';
+import { sendEmail, type SendEmailParams, type GmailConfig, type Attachment } from '@/src/lib/google';
 import { withCors } from '@/src/lib/cors';
 import { parseEmailContent } from '@/src/lib/email-parser';
 import { requireApiKey } from '@/src/lib/auth';
 import { checkRateLimit, getRateLimitHeaders } from '@/src/lib/rate-limit';
 import { validateEmailAddresses } from '@/src/lib/email-validator';
+import { validateAttachments } from '@/src/lib/attachment-validator';
+import { loadAttachmentFromUrl } from '@/src/lib/attachment-loader';
 
 /**
  * POST /api/sendmail
@@ -164,6 +166,64 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Process attachments if provided
+    let attachments: Attachment[] | undefined;
+    if (body.attachments && Array.isArray(body.attachments)) {
+      // Validate attachments first
+      const validation = validateAttachments(body.attachments);
+      if (!validation.valid) {
+        return withCors(
+          NextResponse.json(
+            {
+              error: validation.error || 'Invalid attachments',
+              invalidAttachments: validation.invalid,
+            },
+            { status: 400 },
+          ),
+        );
+      }
+
+      // Load attachments from URLs if needed
+      attachments = [];
+      for (const attachment of body.attachments) {
+        if (attachment.url) {
+          try {
+            const loaded = await loadAttachmentFromUrl(attachment.url);
+            attachments.push({
+              filename: attachment.filename,
+              content: loaded.content,
+              contentType: attachment.contentType || loaded.contentType || 'application/octet-stream',
+            });
+          } catch (error) {
+            return withCors(
+              NextResponse.json(
+                {
+                  error: `Failed to load attachment "${attachment.filename}" from URL: ${
+                    error instanceof Error ? error.message : 'Unknown error'
+                  }`,
+                },
+                { status: 400 },
+              ),
+            );
+          }
+        } else if (attachment.content) {
+          // Use provided base64 content
+          attachments.push({
+            filename: attachment.filename,
+            content: attachment.content,
+            contentType: attachment.contentType || 'application/octet-stream',
+          });
+        } else {
+          return withCors(
+            NextResponse.json(
+              { error: `Attachment "${attachment.filename}" must have either "content" or "url" field` },
+              { status: 400 },
+            ),
+          );
+        }
+      }
+    }
+
     // Prepare parameters for sending
     const emailParams: SendEmailParams = {
       to: body.to,
@@ -173,6 +233,7 @@ export async function POST(req: NextRequest) {
       cc: body.cc,
       bcc: body.bcc,
       replyTo: body.replyTo,
+      attachments: attachments,
     };
 
     const config: GmailConfig = {
@@ -191,12 +252,31 @@ export async function POST(req: NextRequest) {
     // Get rate limit headers to include in response
     const rateLimitHeaders = getRateLimitHeaders(req);
 
+    // Calculate attachment info for response
+    const attachmentInfo =
+      attachments && attachments.length > 0
+        ? {
+            count: attachments.length,
+            totalSize: attachments.reduce((total, att) => {
+              if (att.content) {
+                try {
+                  return total + Buffer.from(att.content, 'base64').length;
+                } catch {
+                  return total;
+                }
+              }
+              return total;
+            }, 0),
+          }
+        : undefined;
+
     return withCors(
       NextResponse.json(
         {
           success: true,
           messageId: result.messageId,
           message: 'Email sent successfully',
+          ...(attachmentInfo && { attachments: attachmentInfo }),
         },
         {
           headers: rateLimitHeaders,
