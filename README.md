@@ -296,8 +296,6 @@ For larger files, provide a URL and the service will download the file automatic
 - URL validation ensures only safe protocols are used
 - File size validation prevents abuse
 
-For detailed information and examples, see [`_docs/attachments.md`](_docs/attachments.md) and [`_docs/postman-attachments.md`](_docs/postman-attachments.md).
-
 ## Testing with Postman
 
 ### 1. Get Refresh Token
