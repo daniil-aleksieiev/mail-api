@@ -48,7 +48,7 @@ export default function Home() {
               HTML templates, and automatic object formatting.
             </p>
             <a
-              href="https://github.com/daniil-aleksieiev/mail-api"
+              href="https://github.com/dan-aleksieiev/mail-api"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-lg text-[#00ff88] hover:bg-[#00ff88]/20 hover:border-[#00ff88]/50 transition-all duration-200 font-semibold"
@@ -243,7 +243,7 @@ export default function Home() {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-[#00ff88]">Quick Start</h3>
               <a
-                href="https://github.com/daniil-aleksieiev/mail-api"
+                href="https://github.com/dan-aleksieiev/mail-api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm text-[#888] hover:text-[#00ff88] transition-colors duration-200 flex items-center gap-1"
@@ -292,7 +292,7 @@ API_KEY=your-api-key`}
                 <p className="text-xs text-[#666]">
                   For detailed setup instructions, examples, and troubleshooting, see the{' '}
                   <a
-                    href="https://github.com/daniil-aleksieiev/mail-api"
+                    href="https://github.com/dan-aleksieiev/mail-api"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-[#00ff88] hover:underline"
@@ -318,7 +318,7 @@ API_KEY=your-api-key`}
               </div>
               <div className="flex items-center gap-6">
                 <a
-                  href="https://github.com/daniil-aleksieiev/mail-api"
+                  href="https://github.com/dan-aleksieiev/mail-api"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[#888] hover:text-[#00ff88] transition-colors duration-200 flex items-center gap-2"
