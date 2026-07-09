@@ -11,7 +11,7 @@ export default function Home() {
             </div>
             <div className="flex items-center gap-6">
               <a
-                href="https://github.com/daniil-aleksieiev/mail-api"
+                href="https://github.com/dan-aleksieiev/mail-api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-[#888] hover:text-[#00ff88] transition-colors duration-200"
